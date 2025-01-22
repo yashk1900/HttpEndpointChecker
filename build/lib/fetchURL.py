@@ -19,47 +19,40 @@ async def check_health(endpoint,session):
     url = endpoint["url"]
     headers = endpoint.get("headers", {})
     body = endpoint.get("body", None)
+
+    # Run requests asynchronously
     try:
         start_time = time.time()
         async with session.request(method, url, headers=headers, data=body, timeout=5) as response:
-            
-            # latency = response.elapsed.total_seconds() * 1000  # in milliseconds
-            
+            # calculate latency
             latency = (time.time() - start_time) * 1000 
-            print("Latencky:",latency)
-            print(response)
             is_up = 200 <= response.status < 300 and latency < 500
             return urlparse(url).netloc, is_up, latency
+        
     except Exception as e:
-            print("Error:", e)
             return urlparse(url).netloc, False, 0
 
-def log_availability_stats(stats):
-    for domain, data in stats.items():
-        total_checks = data["total"]
-        up_checks = data["up"]
-        # Round to nearest percentage
-        availability = round((up_checks / total_checks) * 100) if total_checks else 0
-        print(f"{domain} has {availability}% availability percentage")
-
 async def monitor_health(endpoints):
-    domain_stats = defaultdict(lambda: {"up": 0, "total": 0})
+    stats = defaultdict(lambda: {"up": 0, "total": 0})
     async with aiohttp.ClientSession() as session:
         while True:
+            # each endpoint is associated with a particular task
             tasks = [check_health(endpoint, session) for endpoint in endpoints]
             results = await asyncio.gather(*tasks)
 
+            # update ther stats
             for domain, is_up,_ in results:
-                domain_stats[domain]["total"] += 1
+                stats[domain]["total"] += 1
                 if is_up:
-                    domain_stats[domain]["up"] += 1
+                    stats[domain]["up"] += 1
 
             # Log the availability for each domain
-            for domain, data in domain_stats.items():
+            print("-----------")
+            for domain, data in stats.items():
                 availability = round((data["up"] / data["total"]) * 100) if data["total"] > 0 else 0
                 print(f"{domain} has {availability}% availability percentage")
-
-            await asyncio.sleep(15)  # Wait for 15 seconds before the next check
+            print("-----------")
+            await asyncio.sleep(15)
 
 def main(file_path):
     endpoints = load_config(file_path)
