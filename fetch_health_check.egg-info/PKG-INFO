@@ -1,0 +1,6 @@
+Metadata-Version: 2.1
+Name: fetch-health-check
+Version: 1.0
+Summary: A tool to monitor the health of HTTP endpoints
+Author: Yash Kothekar
+Author-email: yashkothekar1900@gmail.com

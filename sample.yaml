@@ -20,3 +20,7 @@
 
 - name: fetch rewards index page
   url: https://www.fetchrewards.com/
+- name: portfolio
+  url: https://yashkothekar.com/
+- name: natours
+  url: https://salty-lake-82539-65ae1cd06c80.herokuapp.com/
