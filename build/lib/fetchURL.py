@@ -12,7 +12,7 @@ def load_config(file_path):
     with open(file_path, 'r') as file:
         return yaml.safe_load(file)
 
-def check_health(endpoint):
+async def check_health(endpoint,session):
 
     # Default GET method
     method = endpoint.get("method", "GET").upper()
@@ -21,13 +21,18 @@ def check_health(endpoint):
     body = endpoint.get("body", None)
     try:
         start_time = time.time()
-        response = requests.request(method, url, headers=headers, data=body, timeout=5)
-        latency = (time.time() - start_time) * 1000 
-        # We want response of 2XX and latency <500
-        is_up = 200 <= response.status_code < 300 and latency < 500
-        return is_up
-    except requests.RequestException:
-        return False
+        async with session.request(method, url, headers=headers, data=body, timeout=5) as response:
+            
+            # latency = response.elapsed.total_seconds() * 1000  # in milliseconds
+            
+            latency = (time.time() - start_time) * 1000 
+            print("Latencky:",latency)
+            print(response)
+            is_up = 200 <= response.status < 300 and latency < 500
+            return urlparse(url).netloc, is_up, latency
+    except Exception as e:
+            print("Error:", e)
+            return urlparse(url).netloc, False, 0
 
 def log_availability_stats(stats):
     for domain, data in stats.items():
@@ -37,30 +42,28 @@ def log_availability_stats(stats):
         availability = round((up_checks / total_checks) * 100) if total_checks else 0
         print(f"{domain} has {availability}% availability percentage")
 
-def main(file_path):
-    # get list of individual endpoints
-    endpoints = load_config(file_path)
-    # local storage, to maintain stats
+async def monitor_health(endpoints):
     domain_stats = defaultdict(lambda: {"up": 0, "total": 0})
-
-    print("Starting health check monitoring. Press CTRL+C to stop.")
-    try:
+    async with aiohttp.ClientSession() as session:
         while True:
-            for endpoint in endpoints:
+            tasks = [check_health(endpoint, session) for endpoint in endpoints]
+            results = await asyncio.gather(*tasks)
 
-                # Use urlparse and remove the port number
-                domain = urlparse(endpoint["url"]).netloc.split(':')[0]
-                is_up = check_health(endpoint)
+            for domain, is_up,_ in results:
                 domain_stats[domain]["total"] += 1
                 if is_up:
                     domain_stats[domain]["up"] += 1
-            print("----------------------")
-            log_availability_stats(domain_stats)
-            print("----------------------")
-            time.sleep(15)
-    except KeyboardInterrupt:
-        print("\nMonitoring stopped. Exiting program.")
 
+            # Log the availability for each domain
+            for domain, data in domain_stats.items():
+                availability = round((data["up"] / data["total"]) * 100) if data["total"] > 0 else 0
+                print(f"{domain} has {availability}% availability percentage")
+
+            await asyncio.sleep(15)  # Wait for 15 seconds before the next check
+
+def main(file_path):
+    endpoints = load_config(file_path)
+    asyncio.run(monitor_health(endpoints))
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python fetchURL.py <path_to_yaml_file>")
