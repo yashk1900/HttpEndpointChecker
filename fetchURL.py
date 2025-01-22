@@ -4,6 +4,7 @@
 # 2. requests
 # 3. aiohttp
 # Instead, if you choose to clone the above repo, you will just need to run `pip install .` once
+# Once requirements are installed just run `python fetchURL.py <path to yaml endpoint file>`
 
 import asyncio
 import aiohttp
