@@ -1,3 +1,10 @@
+# Check out the complete solution at : https://github.com/yashk1900/HttpEndpointChecker/tree/main
+# To run this stand alone file you will need to install the following dependencies
+# 1. pyyaml
+# 2. requests
+# 3. aiohttp
+# Instead, if you choose to clone the above repo, you will just need to run `pip install .` once
+
 import asyncio
 import aiohttp
 import yaml
